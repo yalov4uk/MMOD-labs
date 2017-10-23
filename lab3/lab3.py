@@ -1,7 +1,7 @@
 import math
 
 import scipy.stats as st
-from matplotlib import pyplot, mlab
+from matplotlib import pyplot
 
 from lab1.lab1 import method_2_
 
@@ -29,8 +29,8 @@ class Lab3:
         k2 = self.kolmogorov(y2, F2)
         print k2
 
-        pyplot.figure(figsize=(15, 5))
-        self.confidence(1, y1)
+        self.report_mean_interval(self.calculate_M(y2), self.calculete_D(y2, self.calculate_M(y2)) ** 0.5, 0.95, 10000)
+        self.report_var_interval(self.calculete_D(y2, self.calculate_M(y2)) ** 0.5, 0.95, 10000)
 
         pyplot.show()
 
@@ -59,16 +59,22 @@ class Lab3:
         F_teor = [1 - math.e ** (-self.l * y[i]) for i in xrange(len(y))]
         return math.sqrt(self.n) * max(abs(F[i] - F_teor[i]) for i in xrange(len(y)))
 
-    def confidence(self, i, y):
-        pyplot.subplot(1, 2, i)
-        x_min = 0.01
-        x_max = 0.99
-        dx = 0.01
-        xlist = mlab.frange(x_min, x_max, dx)
-        ylist = [
-            st.norm.ppf((i + 1) / 2) * 2 * math.sqrt(self.calculete_D(y, self.calculate_M(y))) / math.sqrt(self.n - 1)
-            for i in xlist]
-        pyplot.plot(xlist, ylist, 'b')
+    def report_mean_interval(self, m, s, eps, n):
+        t_high = st.t.ppf(eps + (1 - eps) / 2, n - 1)
+
+        lower = m - t_high * s / n ** 0.5
+        higher = m + t_high * s / n ** 0.5
+        print 'Mean interval are [{} -- {}]'.format(round(lower, 3), round(higher, 3))
+        return lower, higher
+
+    def report_var_interval(self, s, eps, n):
+        chi2_high = st.chi2.ppf((1 - eps) / 2, n - 1)
+        chi2_low = st.chi2.ppf((1 + eps) / 2, n - 1)
+
+        lower = (n - 1) * s ** 2 / chi2_low
+        higher = (n - 1) * s ** 2 / chi2_high
+        print 'Variance interval are [{} -- {}]'.format(round(lower, 3), round(higher, 3))
+        return lower, higher
 
     def calculate_M(self, y):
         """ M = 1/lambda """
