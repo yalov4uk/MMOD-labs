@@ -108,3 +108,9 @@ class Lab4(object):
             pyplot.title('Y for X = {}'.format(self.X[k - 1]))
 
         return p_y_empirical
+
+    def calculate_M(self, y):
+        return sum(y) / len(y)
+
+    def calculete_D(self, y, M):
+        return sum([y[i] ** 2 - M ** 2 for i in xrange(len(y))]) / len(y)
