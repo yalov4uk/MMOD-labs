@@ -1,22 +1,20 @@
-from collections import Counter
-from copy import deepcopy
-
 import numpy as np
+from scipy.stats import expon#, uniform, norm, triang
+from numpy.random import exponential, normal, triangular, uniform
+from collections import Counter
 from matplotlib import pyplot as plt
-from numpy.random import normal, triangular, uniform
-from scipy.stats import expon  # , uniform, norm, triang
+from copy import deepcopy
 
 CHANNEL_FREE = 0
 CHANNEL_WORK = 1
 CHANNEL_WAIT = 2
 
-uniform_generator = lambda: uniform(low=3, high=9)
-norm_generator = lambda: normal(loc=5, scale=1)
-triangle_generator = lambda: triangular(left=3, right=9, mode=6)
-
+uniform_generator = lambda : uniform(low=3, high=9)
+norm_generator = lambda : normal(loc=5, scale=1)
+triangle_generator = lambda : triangular(left=3, right=9, mode=6)
 
 def main():
-    # Variant 1
+    #Variant 1
     model = Model(
         phases_settings=[
             {'channels_count': 3, 'channel_dist': uniform_generator, 'accumulator_volume': 3},
@@ -46,19 +44,20 @@ class Model:
         ) for phase_settings in phases_settings]
 
     def emulate_work(self, time_delta, requests_total_count):
-        current_time = 0.0
+        current_time = 0.
         requests = []
-        time_to_next_req_gen = self._get_time_req_gen(expon(scale=2.0), requests_total_count)
+        time_to_next_req_gen = self._get_time_req_gen(expon(scale=2.), requests_total_count)
         time_to_next_req = 0
-        rejected_requests = 0
+        c = 0
         while np.any([not phase.is_free() for phase in self.phases]) or time_to_next_req_gen.has_next():
             while time_to_next_req == 0 and time_to_next_req_gen.has_next():
                 requests.append(Request(time_start=current_time))
                 if self.phases[0].has_place_for_request():
                     self.phases[0].send_request(requests[-1])
                 else:
-                    rejected_requests += 1
-                time_to_next_req = round(time_to_next_req_gen.next(), 2)
+                    c += 1
+                if time_to_next_req_gen.has_next():
+                    time_to_next_req = round(time_to_next_req_gen.next(), 2)
             for i, phase in reversed(list(enumerate(self.phases))):
                 waiting_channels = phase.move(time_delta)
                 if i is not len(self.phases) - 1:
@@ -75,9 +74,10 @@ class Model:
             current_time = round(current_time + time_delta, 2)
             if time_to_next_req > 0:
                 time_to_next_req = round(time_to_next_req - time_delta, 2)
-            if current_time % 1000 == 0:
-                print 'current time = {}, requests process = {}'.format(current_time, len(requests))
-        print 'rejected requests = {}'.format(rejected_requests)
+            if current_time % 500 == 0:
+                print current_time, 'model seconds'#, time_to_next_req
+            #print len(requests), len([1 for r in requests if r.time_end is not None])
+        print 'lost phirst phase', c
         return ModelStatistics(requests=requests, phases=self.phases), current_time
 
     def _get_time_req_gen(self, dist, N):
@@ -86,15 +86,12 @@ class Model:
                 self.dist = dist
                 self.N = N
                 self.req_count = 0
-
             def has_next(self):
                 return self.req_count < self.N
-
             def next(self):
                 if self.has_next():
                     self.req_count += 1
                     return dist.rvs(size=1)[0]
-
         return gen(dist, N)
 
 
@@ -105,18 +102,26 @@ class Phase:
         self.requests_in_accum = []
 
     def is_free(self):
-        return self.accumulator.is_empty() and np.all([channel.state is CHANNEL_FREE for channel in self.channels])
+        return self.accumulator.is_empty() and \
+            np.all([channel.state is CHANNEL_FREE for channel in self.channels])
 
     def has_place_for_request(self):
         return self.accumulator.has_free_volume()
+               #or np.any([channel.state is CHANNEL_FREE for channel in self.channels])
 
     def send_request(self, request):
+        #if np.any([channel.state is CHANNEL_FREE for channel in self.channels]):
+        #    for channel in self.channels:
+        #        if channel.state is CHANNEL_FREE:
+        #            channel.send_request(request)
+        #else:
         self.accumulator.send_request(request)
 
     def move(self, time_delta):
         self.requests_in_accum.append(len(self.accumulator.requests))
         waiting_channels = []
         for channel in self.channels:
+            #print channel.state
             channel.checked_states.append(channel.state)
             if channel.state is CHANNEL_WAIT:
                 waiting_channels.append(channel)
@@ -141,10 +146,11 @@ class Channel:
         self.work_time_gen = self._get_work_time_gen(dist)
         self.checked_states = []
         self.request = None
-        self.work_time = 0.0
+        self.work_time = 0.
 
     def _get_work_time_gen(self, dist):
         while True:
+            #yield dist.rvs(size=1)[0]
             yield dist()
 
     def send_request(self, request):
@@ -153,7 +159,7 @@ class Channel:
         self.state = CHANNEL_WORK
 
     def move(self, time_delta):
-        if self.work_time == 0.0:
+        if self.work_time == 0:
             if self.request is not None:
                 self.state = CHANNEL_WAIT
                 return True
@@ -201,11 +207,11 @@ class ModelStatistics:
         time_ends = [request.time_end for request in self.requests if request.time_end is not None]
         time_ends.sort()
         last_time_end = time_ends.pop(-1)
-        for time_end in reversed(time_ends):  # [:-1]):
+        for time_end in reversed(time_ends):#[:-1]):
             interval = last_time_end - time_end
             last_time_end -= interval
             intervals = np.append(intervals, interval)
-        print 'end intervals M: {}, D: {}'.format(intervals.mean(), intervals.std())  # ** 2)
+        print 'end intervals M: {}, D: {}'.format(intervals.mean(), intervals.std())# ** 2)
         plt.hist(intervals, normed=True)
         plt.show()
 
@@ -214,7 +220,7 @@ class ModelStatistics:
             request.time_end - request.time_start for request in self.requests
             if request.time_end is not None
         ])
-        print 'durations M: {}, D: {}'.format(durations.mean(), durations.std())  # ** 2)
+        print 'durations M: {}, D: {}'.format(durations.mean(), durations.std())# ** 2)
         plt.hist(durations, normed=True)
         plt.show()
 
@@ -236,3 +242,11 @@ class ModelStatistics:
 
 if __name__ == '__main__':
     main()
+
+phases_settings1 = '''[
+                {'channels_count': 3, 'channel_dist': uniform(loc=3, scale=9), 'accumulator_volume': 3},
+                            #ravnomern from 3 to 9
+                {'channels_count': 4, 'channel_dist': norm(loc=5, scale=1), 'accumulator_volume': 5},
+                            #loc == M, scale == D
+                {'channels_count': 3, 'channel_dist': triang(c=1, loc=3, scale=9), 'accumulator_volume': 3},
+            ],'''
