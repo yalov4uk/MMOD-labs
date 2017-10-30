@@ -1,20 +1,22 @@
-import numpy as np
-from scipy.stats import expon#, uniform, norm, triang
-from numpy.random import exponential, normal, triangular, uniform
 from collections import Counter
-from matplotlib import pyplot as plt
 from copy import deepcopy
+
+import numpy as np
+from matplotlib import pyplot as plt
+from numpy.random import normal, triangular, uniform
+from scipy.stats import expon  # , uniform, norm, triang
 
 CHANNEL_FREE = 0
 CHANNEL_WORK = 1
 CHANNEL_WAIT = 2
 
-uniform_generator = lambda : uniform(low=3, high=9)
-norm_generator = lambda : normal(loc=5, scale=1)
-triangle_generator = lambda : triangular(left=3, right=9, mode=6)
+uniform_generator = lambda: uniform(low=3, high=9)
+norm_generator = lambda: normal(loc=5, scale=1)
+triangle_generator = lambda: triangular(left=3, right=9, mode=6)
+
 
 def main():
-    #Variant 1
+    # Variant 1
     model = Model(
         phases_settings=[
             {'channels_count': 3, 'channel_dist': uniform_generator, 'accumulator_volume': 3},
@@ -75,8 +77,8 @@ class Model:
             if time_to_next_req > 0:
                 time_to_next_req = round(time_to_next_req - time_delta, 2)
             if current_time % 500 == 0:
-                print current_time, 'model seconds'#, time_to_next_req
-            #print len(requests), len([1 for r in requests if r.time_end is not None])
+                print current_time, 'model seconds'  # , time_to_next_req
+                # print len(requests), len([1 for r in requests if r.time_end is not None])
         print 'lost phirst phase', c
         return ModelStatistics(requests=requests, phases=self.phases), current_time
 
@@ -86,12 +88,15 @@ class Model:
                 self.dist = dist
                 self.N = N
                 self.req_count = 0
+
             def has_next(self):
                 return self.req_count < self.N
+
             def next(self):
                 if self.has_next():
                     self.req_count += 1
                     return dist.rvs(size=1)[0]
+
         return gen(dist, N)
 
 
@@ -103,25 +108,25 @@ class Phase:
 
     def is_free(self):
         return self.accumulator.is_empty() and \
-            np.all([channel.state is CHANNEL_FREE for channel in self.channels])
+               np.all([channel.state is CHANNEL_FREE for channel in self.channels])
 
     def has_place_for_request(self):
         return self.accumulator.has_free_volume()
-               #or np.any([channel.state is CHANNEL_FREE for channel in self.channels])
+        # or np.any([channel.state is CHANNEL_FREE for channel in self.channels])
 
     def send_request(self, request):
-        #if np.any([channel.state is CHANNEL_FREE for channel in self.channels]):
+        # if np.any([channel.state is CHANNEL_FREE for channel in self.channels]):
         #    for channel in self.channels:
         #        if channel.state is CHANNEL_FREE:
         #            channel.send_request(request)
-        #else:
+        # else:
         self.accumulator.send_request(request)
 
     def move(self, time_delta):
         self.requests_in_accum.append(len(self.accumulator.requests))
         waiting_channels = []
         for channel in self.channels:
-            #print channel.state
+            # print channel.state
             channel.checked_states.append(channel.state)
             if channel.state is CHANNEL_WAIT:
                 waiting_channels.append(channel)
@@ -150,7 +155,7 @@ class Channel:
 
     def _get_work_time_gen(self, dist):
         while True:
-            #yield dist.rvs(size=1)[0]
+            # yield dist.rvs(size=1)[0]
             yield dist()
 
     def send_request(self, request):
@@ -207,11 +212,11 @@ class ModelStatistics:
         time_ends = [request.time_end for request in self.requests if request.time_end is not None]
         time_ends.sort()
         last_time_end = time_ends.pop(-1)
-        for time_end in reversed(time_ends):#[:-1]):
+        for time_end in reversed(time_ends):  # [:-1]):
             interval = last_time_end - time_end
             last_time_end -= interval
             intervals = np.append(intervals, interval)
-        print 'end intervals M: {}, D: {}'.format(intervals.mean(), intervals.std())# ** 2)
+        print 'end intervals M: {}, D: {}'.format(intervals.mean(), intervals.std())  # ** 2)
         plt.hist(intervals, normed=True)
         plt.show()
 
@@ -220,7 +225,7 @@ class ModelStatistics:
             request.time_end - request.time_start for request in self.requests
             if request.time_end is not None
         ])
-        print 'durations M: {}, D: {}'.format(durations.mean(), durations.std())# ** 2)
+        print 'durations M: {}, D: {}'.format(durations.mean(), durations.std())  # ** 2)
         plt.hist(durations, normed=True)
         plt.show()
 

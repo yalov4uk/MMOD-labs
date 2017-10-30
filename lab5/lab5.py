@@ -8,7 +8,7 @@ class Lab5(object):
     def __init__(self):
         self.a = 2
         self.b = 12
-        self.n = 1000
+        self.n = 10000
 
     def run(self):
         xy_gen = self.generate_xy()
@@ -17,8 +17,8 @@ class Lab5(object):
         x_list, y_list = zip(*xy_list)
         x_list, y_list = numpy.array(x_list), numpy.array(y_list)
 
-        print 'M[X] = {}, ideal = {}'.format(x_list.mean(), (self.a + self.b) / 2.0)
-        print 'D[X] = {}, ideal = {}'.format(x_list.std() ** 2, (self.b - self.a) ** 2 / 12.0)
+        print 'M[X] = {}, theoretical = {}'.format(x_list.mean(), (self.a + self.b) / 2.0)
+        print 'D[X] = {}, theoretical = {}'.format(x_list.std() ** 2, (self.b - self.a) ** 2 / 12.0)
 
         print 'M[Y] = {}'.format(y_list.mean())
         print 'D[Y] = {}'.format(y_list.std() ** 2)
@@ -35,7 +35,7 @@ class Lab5(object):
         uniform_distribution_gen = self.uniform_distribution()
         while True:
             x = uniform_distribution_gen.next()
-            lmbd = 10.0 / (x + 5) ** 10
+            lmbd = x * 3
             y = self.exponential_distribution(lmbd).next()
             yield x, y
 
