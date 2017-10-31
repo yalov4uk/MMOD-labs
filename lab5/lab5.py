@@ -23,7 +23,7 @@ class Lab5(object):
         print 'M[Y] = {}'.format(y_list.mean())
         print 'D[Y] = {}'.format(y_list.std() ** 2)
 
-        print 'r = {}'.format(numpy.corrcoef(x_list, y_list)[0][0])
+        print 'r = {}'.format(numpy.corrcoef(x_list, y_list)[0][1])
 
         pyplot.hist(x_list, normed=True)
         pyplot.show()
